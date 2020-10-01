@@ -1,7 +1,7 @@
 import logging
 import json
 import requests
-from typing import Dict, List, IO, Optional, Tuple, Union
+from typing import Any, Dict, List, IO, Optional, Tuple, Union
 
 from media_management_sdk.exceptions import (
     ApiError,
@@ -78,7 +78,9 @@ class API(object):
         kwargs.setdefault("timeout", DEFAULT_TIMEOUT)
 
         # Log the request, omitting headers which may contain auth credentials
-        log_kwargs = json.dumps({k: kwargs[k] for k in kwargs if k != "headers"})
+        log_kwargs = json.dumps(
+            {k: kwargs[k] for k in kwargs if k != "headers" and k != "files"}
+        )
         logger.info(f"API request [{method} {url}] {log_kwargs}")
 
         try:
@@ -147,7 +149,7 @@ class API(object):
         url = f"{self.base_url}/auth/obtain-token"
         params = dict(client_id=client_id, client_secret=client_secret, user_id=user_id)
         if course_id:
-            params["course_id"] = course_id
+            params["course_id"] = str(course_id)
         if course_id and course_permission:
             params["course_permission"] = course_permission
         return self._do_request(method=POST, url=url, headers=self.headers, json=params)
@@ -412,7 +414,7 @@ class API(object):
         self,
         collection_id: int,
         course_id: int,
-        title: Optional[str] = None,
+        title: str,
         description: Optional[str] = None,
         sort_order: Optional[int] = None,
         course_image_ids: Optional[List[int]] = None,
@@ -466,7 +468,7 @@ class API(object):
         upload_file: IO,
         file_name: str,
         content_type: str,
-        title: Optional[str] = None,
+        title: str,
     ):
         """Upload a single image to the course.
 
@@ -514,13 +516,15 @@ class API(object):
             ("file", (name, fp, content_type))
             for (name, fp, content_type) in upload_files
         ]
+        post_headers = {"Authorization": f"Token {self.access_token}"}
         return self._do_request(
-            method=POST, url=url, headers=self.headers, data=data, files=post_files
+            method=POST, url=url, headers=post_headers, data=data, files=post_files
         )
 
     def update_image(
         self,
         image_id: int,
+        course_id: int,
         title: Optional[str] = None,
         description: Optional[str] = None,
         sort_order: Optional[int] = None,
@@ -530,6 +534,7 @@ class API(object):
 
         Args:
             image_id: Image ID.
+            course_id: Course ID.
             title: Image title. Defaults to None.
             description: Image description. Defaults to None.
             sort_order : Image sort order in the course library. Defaults to None.
@@ -542,11 +547,14 @@ class API(object):
             ApiError: Raised on 4XX or 5XX error response.
         """
         url = f"{self.base_url}/images/{image_id}"
-        params = dict(title=title, description=description, sort_order=sort_order)
+        params: Dict[str, Any] = dict(
+            course_id=course_id,
+            title=title,
+            description=description,
+            sort_order=sort_order,
+        )
         if metadata is not None:
-            params["metadata"] = [
-                {"value": value, "label": key} for (key, value) in metadata.items()
-            ]
+            params["metadata"] = [{"value": v, "label": k} for (k, v) in metadata.items()]
         params = {k: v for k, v in params.items() if v is not None}
         return self._do_request(method=PUT, url=url, headers=self.headers, json=params)
 

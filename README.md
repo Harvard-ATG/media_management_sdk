@@ -29,16 +29,27 @@ $ pip install -r requirements-dev.txt
 Run unit tests:
 
 ```
-$ pytest                  # invoke pytest directly
-$ python3 -m pytest tests  # alternative way of invoking pytest
+$ pytest tests/unit
 ```
 
-Run tests against multiple python environments:
+Run unit tests against multiple python environments:
 
 ```
 $ tox
 $ tox -e py38
 ```
+
+Run functional tests against the API (no mocking - actual API calls):
+
+```
+$ export MEDIA_MANAGEMENT_API_ID=media_management_sdk
+$ export MEDIA_MANAGEMENT_API_SECRET=secret_for_test
+$ export MEDIA_MANAGEMENT_API_URL=https://myinstance.domain/api 
+$ export MEDIA_MANAGEMENT_API_USER_ID=test_user_id
+$ pytest tests/functional
+```
+
+_Note: In order to run the functional tests, you must first register an _Application_ with the API in order to obtain client credentials, and then configure those details using environment variables as shown above. It's recommended to use a non-production instance._
 
 Generate and preview docs locally:
 
