@@ -6,6 +6,7 @@ from typing import Dict, List, IO, Optional, Tuple, Union
 from media_management_sdk.exceptions import (
     ApiError,
     ApiHTTPError,
+    ApiBadRequest,
     ApiForbiddenError,
     ApiNotFoundError,
 )
@@ -86,10 +87,13 @@ class API(object):
         except requests.exceptions.HTTPError as e:
             logging.exception("HTTP error")
             status_code = e.response.status_code
+            detail = e.response.text
+            if status_code == 400:
+                raise ApiBadRequest(detail)
             if status_code == 403:
-                raise ApiForbiddenError
+                raise ApiForbiddenError(detail)
             elif status_code == 404:
-                raise ApiNotFoundError
+                raise ApiNotFoundError(detail)
             else:
                 raise ApiHTTPError(f"HTTP error status code: {status_code}")
         except requests.exceptions.RequestException as e:
@@ -223,25 +227,23 @@ class API(object):
     def create_course(
         self,
         title: str,
-        sis_course_id: Optional[str] = None,
-        canvas_course_id: Optional[int] = None,
-        lti_context_id: Optional[str] = None,
-        lti_tool_consumer_instance_guid: Optional[str] = None,
-        lti_tool_consumer_instance_name: Optional[str] = None,
+        lti_context_id: str,
+        lti_tool_consumer_instance_guid: str,
         lti_context_title: Optional[str] = None,
         lti_context_label: Optional[str] = None,
+        sis_course_id: Optional[str] = None,
+        canvas_course_id: Optional[int] = None,
     ):
         """Create a course.
 
         Args:
             title: Course title.
-            sis_course_id: SIS course ID. Defaults to None.
-            canvas_course_id: Canvas course ID. Defaults to None.
-            lti_context_id: LTI context ID. Defaults to None.
-            lti_tool_consumer_instance_guid: Tool consumer instance GUID. Defaults to None.
-            lti_tool_consumer_instance_name: Tool consumer instance Name. Defaults to None.
+            lti_context_id: LTI context ID.
+            lti_tool_consumer_instance_guid: Tool consumer instance GUID.
             lti_context_title: LTI context title. Defaults to None.
             lti_context_label: LTI context label. Defaults to None.
+            sis_course_id: SIS course ID. Defaults to None.
+            canvas_course_id: Canvas course ID. Defaults to None.
 
         Returns:
             Response data.
@@ -253,13 +255,13 @@ class API(object):
         params = dict(
             lti_context_id=lti_context_id,
             lti_tool_consumer_instance_guid=lti_tool_consumer_instance_guid,
-            lti_tool_consumer_instance_name=lti_tool_consumer_instance_name,
             lti_context_title=lti_context_title,
             lti_context_label=lti_context_label,
             title=title,
             sis_course_id=sis_course_id,
             canvas_course_id=canvas_course_id,
         )
+        params = {k: v for k, v in params.items() if v is not None}
         return self._do_request(method=POST, url=url, headers=self.headers, json=params)
 
     def update_course(
@@ -304,6 +306,7 @@ class API(object):
             sis_course_id=sis_course_id,
             canvas_course_id=canvas_course_id,
         )
+        params = {k: v for k, v in params.items() if v is not None}
         return self._do_request(method=PUT, url=url, headers=self.headers, json=params)
 
     def delete_course(self, course_id: int):
@@ -401,13 +404,14 @@ class API(object):
         Raises:
             ApiError: Raised on 4XX or 5XX error response.
         """
-        url = f"{self.base_url}/collections"
-        params = dict(course_id=course_id, title=title, description=description)
+        url = f"{self.base_url}/courses/{course_id}/collections"
+        params = dict(title=title, description=description, course_id=course_id)
         return self._do_request(method=POST, url=url, headers=self.headers, json=params)
 
     def update_collection(
         self,
         collection_id: int,
+        course_id: int,
         title: Optional[str] = None,
         description: Optional[str] = None,
         sort_order: Optional[int] = None,
@@ -416,6 +420,8 @@ class API(object):
         """Update a collection.
 
         Args:
+            collection_id: Collection ID.
+            course_id: Course ID.
             title: Collection title.
             description: Collection description. Defaults to None.
             sort_order: Collection sort order. Defaults to None.
@@ -430,11 +436,13 @@ class API(object):
         """
         url = f"{self.base_url}/collections/{collection_id}"
         params = dict(
+            course_id=course_id,
             title=title,
             description=description,
             sort_order=sort_order,
             course_image_ids=course_image_ids,
         )
+        params = {k: v for k, v in params.items() if v is not None}
         return self._do_request(method=PUT, url=url, headers=self.headers, json=params)
 
     def delete_collection(self, collection_id: int):
@@ -539,6 +547,7 @@ class API(object):
             params["metadata"] = [
                 {"value": value, "label": key} for (key, value) in metadata.items()
             ]
+        params = {k: v for k, v in params.items() if v is not None}
         return self._do_request(method=PUT, url=url, headers=self.headers, json=params)
 
     def get_image(self, image_id: int):

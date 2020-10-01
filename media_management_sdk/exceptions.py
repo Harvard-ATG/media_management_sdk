@@ -6,6 +6,10 @@ class ApiHTTPError(ApiError):
     pass
 
 
+class ApiBadRequest(ApiHTTPError):
+    pass
+
+
 class ApiForbiddenError(ApiHTTPError):
     pass
 

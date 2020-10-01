@@ -1,4 +1,5 @@
 import os
+import uuid
 
 from media_management_sdk.api import API
 
@@ -7,7 +8,14 @@ TEST_CLIENT_ID = os.environ.get("MEDIA_MANAGEMENT_API_ID", "media_management_sdk
 TEST_CLIENT_SECRET = os.environ.get("MEDIA_MANAGEMENT_API_SECRET", "only_for_testing")
 TEST_BASE_URL = os.environ.get("MEDIA_MANAGEMENT_API_URL", "http://localhost:9000/api")
 TEST_USER_ID = 1
-TEST_CREDENTIALS = dict(client_id=TEST_CLIENT_ID, client_secret=TEST_CLIENT_SECRET, user_id=TEST_USER_ID)
+TEST_CREDENTIALS = dict(
+    client_id=TEST_CLIENT_ID, client_secret=TEST_CLIENT_SECRET, user_id=TEST_USER_ID
+)
+
+
+def generate_ctx_id():
+    """ Returns a unique LTI context ID """
+    return "test:" + str(uuid.uuid1())
 
 
 def test_obtain_token():
@@ -29,7 +37,11 @@ def test_course_crud():
 
     # create course
     title = "My Test Course"
-    create_result = api.create_course(title=title)
+    create_result = api.create_course(
+        title=title,
+        lti_context_id=generate_ctx_id(),
+        lti_tool_consumer_instance_guid="my.institution.edu",
+    )
     assert "id" in create_result
     assert create_result["title"] == title
     course_id = create_result["id"]
@@ -44,11 +56,14 @@ def test_course_crud():
         title=title + " Updated",
         sis_course_id="test123",
         canvas_course_id=100,
-        lti_context_id="2a8b213eb085b7866a9111",
         lti_context_title="My Test Context",
         lti_context_label="TCX",
-        lti_tool_consumer_instance_guid="1ea41637.myinstitution.edu",
-        lti_tool_consumer_instance_name="My Institution",
+        lti_context_id=create_result[
+            "lti_context_id"
+        ],  # TODO: why is this required for an update?
+        lti_tool_consumer_instance_guid=create_result[
+            "lti_tool_consumer_instance_guid"
+        ],  # TODO: why is this required for an update?
     )
     update_result = api.update_course(course_id, **update_params)
     update_result_subset = {k: update_result[k] for k in update_params}
@@ -65,11 +80,18 @@ def test_collection_crud():
     api.access_token = auth_result["access_token"]
 
     # create course
-    course_result = api.create_course(title="My Test Course")
-    course_id = course_result["id"]
+    title = "My Test Course"
+    create_result = api.create_course(
+        title=title,
+        lti_context_id=generate_ctx_id(),
+        lti_tool_consumer_instance_guid="our.institution.edu",
+    )
+    course_id = create_result["id"]
 
     # create collection
-    collection_params = dict(title="My Test Collection",description="This is a fascinating collection")
+    collection_params = dict(
+        title="My Test Collection", description="This is a fascinating collection"
+    )
     collection_result = api.create_collection(course_id, **collection_params)
     assert "id" in collection_result
     assert collection_result["title"] == collection_params["title"]
@@ -78,6 +100,7 @@ def test_collection_crud():
 
     # update collection
     update_params = dict(
+        course_id=course_id,  # TODO: why is this required for an update?
         title=collection_result["title"] + " Updated",
         description=collection_result["description"] + " Updated",
     )
@@ -86,8 +109,12 @@ def test_collection_crud():
     assert update_params == update_result_subset
 
     # delete collection
-    delete_result = api.delete_collection(collection_id)
-    assert delete_result == {}
+    delete_collection = api.delete_collection(collection_id)
+    assert delete_collection == {}
+
+    # delete course
+    delete_course = api.delete_course(course_id)
+    assert delete_course == {}
 
 
 def test_upload_image():
