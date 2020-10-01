@@ -1,6 +1,5 @@
 from unittest.mock import Mock, PropertyMock, patch
 
-import requests
 import pytest
 
 from media_management_sdk.api import API, DEFAULT_TIMEOUT
@@ -10,7 +9,6 @@ from media_management_sdk.exceptions import (
     ApiNotFoundError,
     ApiHTTPError,
 )
-
 
 TEST_BASE_URL = "http://localhost:8000/api"
 TEST_HEADERS = {
@@ -103,7 +101,12 @@ def test_obtain_token_for_user():
 def test_obtain_token_with_invalid_course_permission():
     api = API(base_url=TEST_BASE_URL)
     with pytest.raises(ValueError):
-        api.obtain_token(course_permission="invalid")
+        api.obtain_token(
+            client_id=TEST_CLIENT_ID,
+            client_secret=TEST_CLIENT_SECRET,
+            user_id=TEST_USER_ID,
+            course_permission="invalid",
+        )
 
 
 def test_list_courses_filtered_by_lti_params(courses_fixture):

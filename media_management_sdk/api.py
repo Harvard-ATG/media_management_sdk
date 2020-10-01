@@ -1,6 +1,7 @@
 import logging
 import json
 import requests
+from typing import Dict, List, IO, Optional, Tuple, Union
 
 from media_management_sdk.exceptions import (
     ApiError,
@@ -12,25 +13,30 @@ from media_management_sdk.exceptions import (
 logger = logging.getLogger(__name__)
 
 GET, POST, PUT, DELETE = ("get", "post", "put", "delete")
-
-DEFAULT_TIMEOUT = 10
+DEFAULT_TIMEOUT = 30
 
 
 class API(object):
-    def __init__(self, base_url=None, access_token=None):
+    """
+    API contains methods for interacting with the REST API.
+    """
+
+    def __init__(
+        self, base_url: Optional[str] = None, access_token: Optional[str] = None
+    ) -> None:
         """API constructor.
 
         Args:
-            base_url (str, optional): The API base URL that will prefix all
+            base_url: The base URL that will prefix all
                 endpoint requests. Defaults to None.
-            access_token (str, optional): The API access token to use for requests
+            access_token: The access token to use for requests
                 that require authorization. Defaults to None.
         """
         self.base_url = base_url
         self.access_token = access_token
 
     @property
-    def headers(self):
+    def headers(self) -> Dict[str, str]:
         """Get the HTTP headers needed for API requests."""
         headers = {
             "Accept": "application/json",
@@ -40,14 +46,15 @@ class API(object):
             headers["Authorization"] = f"Token {self.access_token}"
         return headers
 
-    def _do_request(self, method=GET, url=None, **kwargs):
+    def _do_request(self, method: str, url: str, **kwargs) -> Union[List, Dict]:
         """Performs the HTTP request.
 
         This method centralizes exception handling and logging and
         sets some defaults for all requests (e.g. timeout).
 
-        Args:method (str): One of: get, post, put, delete. Defaults to get.
-            url (str): The endpoint URL. Defaults to "".
+        Args:
+            method: One of: get, post, put, delete. Defaults to get.
+            url: The endpoint URL. Defaults to "".
             **kwargs: Arbitrary keyword arguments. These are passed directly
                 to the requests method (e.g. get(), post(), etc).
 
@@ -92,28 +99,32 @@ class API(object):
         try:
             data = r.json()
         except ValueError as e:
-            logger.exception("No JSON object could be decoded")
-            raise ApiError("No JSON object could be decoded")
+            if r.status_code == 204:
+                data = {}
+            else:
+                logger.exception("No JSON object could be decoded")
+                raise ApiError("No JSON object could be decoded")
 
         return data
 
     def obtain_token(
         self,
-        client_id=None,
-        client_secret=None,
-        user_id=None,
-        course_id=None,
-        course_permission=None,
+        client_id: str,
+        client_secret: str,
+        user_id: str,
+        course_id: Optional[int] = None,
+        course_permission: Optional[str] = None,
     ):
         """
         Obtains a temporary access token.
 
-        Args:client_id (str): Identifies the client application. Obtained from API /admin.
-            client_secret (str): Identifies the client application. Obtained from API /admin.
-            user_id (str): The SIS User ID.
-            course_id (str, optional): The PK of the course object that exists in the API. Used to
+        Args:
+            client_id: Identifies the client application. Obtained from API /admin.
+            client_secret: Identifies the client application. Obtained from API /admin.
+            user_id: The SIS User ID.
+            course_id: The PK of the course object that exists in the API. Used to
                 grant the user access to the course if they didn't create it.
-            course_permission (str, optional): One of "read" or "write", defaults to "read". Used
+            course_permission: One of "read" or "write", defaults to "read". Used
                 together with the course_id parameter to grant admin access to the course.
 
         Returns:
@@ -139,11 +150,11 @@ class API(object):
 
     def list_courses(
         self,
-        lti_context_id=None,
-        lti_tool_consumer_instance_guid=None,
-        canvas_course_id=None,
-        sis_course_id=None,
-        title=None,
+        lti_context_id: Optional[str] = None,
+        lti_tool_consumer_instance_guid: Optional[str] = None,
+        canvas_course_id: Optional[int] = None,
+        sis_course_id: Optional[str] = None,
+        title: Optional[str] = None,
     ):
         """List courses.
 
@@ -152,11 +163,11 @@ class API(object):
         are commonly used to find a particular course.
 
         Args:
-            title (str): Course title. Defaults to None.
-            sis_course_id (str, optional): SIS course ID. Defaults to None.
-            canvas_course_id (str, optional): Canvas course ID. Defaults to None.
-            lti_context_id (str, optional): LTI context ID. Defaults to None.
-            lti_tool_consumer_instance_guid (str, optional): LTI consumer instance GUID. Defaults to None.
+            title: Course title. Defaults to None.
+            sis_course_id: SIS course ID. Defaults to None.
+            canvas_course_id: Canvas course ID. Defaults to None.
+            lti_context_id: LTI context ID. Defaults to None.
+            lti_tool_consumer_instance_guid: LTI consumer instance GUID. Defaults to None.
 
         Returns:
             Response data.
@@ -176,11 +187,11 @@ class API(object):
             method=GET, url=url, headers=self.headers, params=params
         )
 
-    def search_courses(self, text=""):
+    def search_courses(self, text: str = ""):
         """Search courses.
 
         Args:
-            text (str): Search text. Defaults to None.
+            text: Search text. Defaults to None.
 
         Returns:
             Response data.
@@ -194,11 +205,11 @@ class API(object):
             method=GET, url=url, headers=self.headers, params=params
         )
 
-    def get_course(self, course_id):
+    def get_course(self, course_id: int):
         """Get a course.
 
         Args:
-            course_id (int): Course ID.
+            course_id: Course ID.
 
         Returns:
             Response data.
@@ -211,26 +222,26 @@ class API(object):
 
     def create_course(
         self,
-        title,
-        sis_course_id=None,
-        canvas_course_id=None,
-        lti_context_id=None,
-        lti_tool_consumer_instance_guid=None,
-        lti_tool_consumer_instance_name=None,
-        lti_context_title=None,
-        lti_context_label=None,
+        title: str,
+        sis_course_id: Optional[str] = None,
+        canvas_course_id: Optional[int] = None,
+        lti_context_id: Optional[str] = None,
+        lti_tool_consumer_instance_guid: Optional[str] = None,
+        lti_tool_consumer_instance_name: Optional[str] = None,
+        lti_context_title: Optional[str] = None,
+        lti_context_label: Optional[str] = None,
     ):
         """Create a course.
 
         Args:
-            title (str): Course title.
-            sis_course_id (str, optional): SIS course ID. Defaults to None.
-            canvas_course_id (str, optional): Canvas course ID. Defaults to None.
-            lti_context_id (str, optional): LTI context ID. Defaults to None.
-            lti_tool_consumer_instance_guid (str, optional): Tool consumer instance GUID. Defaults to None.
-            lti_tool_consumer_instance_name (str, optional): Tool consumer instance Name. Defaults to None.
-            lti_context_title (str, optional): LTI context title. Defaults to None.
-            lti_context_label (str, optional): LTI context label. Defaults to None.
+            title: Course title.
+            sis_course_id: SIS course ID. Defaults to None.
+            canvas_course_id: Canvas course ID. Defaults to None.
+            lti_context_id: LTI context ID. Defaults to None.
+            lti_tool_consumer_instance_guid: Tool consumer instance GUID. Defaults to None.
+            lti_tool_consumer_instance_name: Tool consumer instance Name. Defaults to None.
+            lti_context_title: LTI context title. Defaults to None.
+            lti_context_label: LTI context label. Defaults to None.
 
         Returns:
             Response data.
@@ -242,6 +253,7 @@ class API(object):
         params = dict(
             lti_context_id=lti_context_id,
             lti_tool_consumer_instance_guid=lti_tool_consumer_instance_guid,
+            lti_tool_consumer_instance_name=lti_tool_consumer_instance_name,
             lti_context_title=lti_context_title,
             lti_context_label=lti_context_label,
             title=title,
@@ -252,28 +264,28 @@ class API(object):
 
     def update_course(
         self,
-        course_id,
-        title=None,
-        sis_course_id=None,
-        canvas_course_id=None,
-        lti_context_id=None,
-        lti_tool_consumer_instance_guid=None,
-        lti_tool_consumer_instance_name=None,
-        lti_context_title=None,
-        lti_context_label=None,
+        course_id: int,
+        title: str = None,
+        sis_course_id: Optional[str] = None,
+        canvas_course_id: Optional[int] = None,
+        lti_context_id: Optional[str] = None,
+        lti_tool_consumer_instance_guid: Optional[str] = None,
+        lti_tool_consumer_instance_name: Optional[str] = None,
+        lti_context_title: Optional[str] = None,
+        lti_context_label: Optional[str] = None,
     ):
         """Create a course.
 
         Args:
-            course_id (int): Course ID.
-            title (str, optional): Course title. Defaults to None.
-            sis_course_id (str, optional): SIS course ID. Defaults to None.
-            canvas_course_id (str, optional): Canvas course ID. Defaults to None.
-            lti_context_id (str, optional): LTI context ID. Defaults to None.
-            lti_tool_consumer_instance_guid (str, optional): Tool consumer instance GUID. Defaults to None.
-            lti_tool_consumer_instance_name (str, optional): Tool consumer instance Name. Defaults to None.
-            lti_context_title (str, optional): LTI context title. Defaults to None.
-            lti_context_label (str, optional): LTI context label. Defaults to None.
+            course_id: Course ID.
+            title: Course title. Defaults to None.
+            sis_course_id: SIS course ID. Defaults to None.
+            canvas_course_id: Canvas course ID. Defaults to None.
+            lti_context_id: LTI context ID. Defaults to None.
+            lti_tool_consumer_instance_guid: Tool consumer instance GUID. Defaults to None.
+            lti_tool_consumer_instance_name: Tool consumer instance Name. Defaults to None.
+            lti_context_title: LTI context title. Defaults to None.
+            lti_context_label: LTI context label. Defaults to None.
 
         Returns:
             Response data.
@@ -285,6 +297,7 @@ class API(object):
         params = dict(
             lti_context_id=lti_context_id,
             lti_tool_consumer_instance_guid=lti_tool_consumer_instance_guid,
+            lti_tool_consumer_instance_name=lti_tool_consumer_instance_name,
             lti_context_title=lti_context_title,
             lti_context_label=lti_context_label,
             title=title,
@@ -293,11 +306,11 @@ class API(object):
         )
         return self._do_request(method=PUT, url=url, headers=self.headers, json=params)
 
-    def delete_course(self, course_id):
+    def delete_course(self, course_id: int):
         """Deletes a course.
 
         Args:
-            course_id (int): Course ID.
+            course_id: Course ID.
 
         Returns:
             Response data.
@@ -308,14 +321,14 @@ class API(object):
         url = f"{self.base_url}/courses/{course_id}"
         return self._do_request(method=DELETE, url=url, headers=self.headers)
 
-    def copy_course(self, src_course_id, dest_course_id):
+    def copy_course(self, src_course_id: int, dest_course_id: int):
         """Copy a course and all of its resources.
 
         Note that the destination course must already exist.
 
         Args:
-            src_course_id (int): Course that is the source of the copy.
-            dest_course_id (int): Course that is the destination of the copy.
+            src_course_id: Course that is the source of the copy.
+            dest_course_id: Course that is the destination of the copy.
 
         Returns:
             Response data.
@@ -327,11 +340,11 @@ class API(object):
         params = dict(source_id=src_course_id)
         return self._do_request(method=POST, url=url, headers=self.headers, json=params)
 
-    def list_collections(self, course_id):
+    def list_collections(self, course_id: int):
         """Lists collections in a course.
 
         Args:
-            course_id (int): Course ID.
+            course_id: Course ID.
 
         Returns:
             Response data.
@@ -339,14 +352,14 @@ class API(object):
         Raises:
             ApiError: Raised on 4XX or 5XX error response.
         """
-        url = f"{self.base_url}/courses/collections"
+        url = f"{self.base_url}/courses/{course_id}/collections"
         return self._do_request(method=GET, url=url, headers=self.headers)
 
-    def get_collection(self, collection_id):
+    def get_collection(self, collection_id: int):
         """Get collection details.
 
         Args:
-            collection_id (int): Collection ID.
+            collection_id: Collection ID.
 
         Returns:
             Response data.
@@ -357,11 +370,11 @@ class API(object):
         url = f"{self.base_url}/collections/{collection_id}"
         return self._do_request(method=GET, url=url, headers=self.headers)
 
-    def get_collection_images(self, collection_id):
+    def get_collection_images(self, collection_id: int):
         """Get collection images.
 
         Args:
-            collection_id (int): Collection ID.
+            collection_id: Collection ID.
 
         Returns:
             Response data.
@@ -372,14 +385,15 @@ class API(object):
         url = f"{self.base_url}/collections/{collection_id}/images"
         return self._do_request(method=GET, url=url, headers=self.headers)
 
-    def create_collection(self, course_id, title, description=None):
+    def create_collection(
+        self, course_id: int, title: str, description: Optional[str] = None
+    ):
         """Create a collection.
 
         Args:
-            collection_id (int): Collection ID.
-            course_id (int): Course ID.
-            title (str): Collection title.
-            description (str, optional): Collection description. Defaults to None.
+            course_id: Course ID.
+            title: Collection title.
+            description: Collection description. Defaults to None.
 
         Returns:
             Response data.
@@ -393,19 +407,19 @@ class API(object):
 
     def update_collection(
         self,
-        collection_id,
-        title=None,
-        description=None,
-        sort_order=None,
-        course_image_ids=None,
+        collection_id: int,
+        title: Optional[str] = None,
+        description: Optional[str] = None,
+        sort_order: Optional[int] = None,
+        course_image_ids: Optional[List[int]] = None,
     ):
         """Update a collection.
 
         Args:
-            title (str): Collection title.
-            description (str, optional): Collection description. Defaults to None.
-            sort_order (int, optional): Collection sort order. Defaults to None.
-            course_image_ids (list, optional): The list of images that should be part of this collection,
+            title: Collection title.
+            description: Collection description. Defaults to None.
+            sort_order: Collection sort order. Defaults to None.
+            course_image_ids: The list of images that should be part of this collection,
                 which should reference images from the course image library (course image IDs). Defaults to None.
 
         Returns:
@@ -423,11 +437,11 @@ class API(object):
         )
         return self._do_request(method=PUT, url=url, headers=self.headers, json=params)
 
-    def delete_collection(self, collection_id):
+    def delete_collection(self, collection_id: int):
         """Deletes a collection.
 
         Args:
-            collection_id (int): Collection ID.
+            collection_id: Collection ID.
 
         Returns:
             Response data.
@@ -438,13 +452,22 @@ class API(object):
         url = f"{self.base_url}/collections/{collection_id}"
         return self._do_request(method=DELETE, url=url, headers=self.headers)
 
-    def upload_image(self, course_id, upload_file, title=None):
+    def upload_image(
+        self,
+        course_id: int,
+        upload_file: IO,
+        file_name: str,
+        content_type: str,
+        title: Optional[str] = None,
+    ):
         """Upload a single image to the course.
 
         Args:
-            course_id (int): Course ID.
-            upload_file (file): File must implement read() and have "name" and "content_type" attributes.
-            title (str, optional): Title to use for the file. Note that if
+            course_id: Course ID.
+            upload_file: File object (e.g. implements read method).
+            file_name: The name of the file.
+            content_type: The MIME type for the file.
+            title: Title to use for the file. Note that if
                 not specified, the original file name will be used. Defaults to None.
 
         Returns:
@@ -453,16 +476,22 @@ class API(object):
         Raises:
             ApiError: Raised on 4XX or 5XX error response.
         """
-        return self.upload_images(course_id, [upload_file], title=title)
+        return self.upload_images(
+            course_id, [(file_name, upload_file, content_type)], title=title
+        )
 
-    def upload_images(self, course_id, upload_files, title=None):
+    def upload_images(
+        self,
+        course_id: int,
+        upload_files: List[Tuple[str, IO, str]],
+        title: Optional[str] = None,
+    ):
         """Upload images to the course.
 
         Args:
-            course_id (int): Course ID.
-            upload_files (list): List of files to upload. Each file must implement
-                read() and have "name" and "content_type" attributes.
-            title (str, optional): Title to use for the file or list of files. Note that if
+            course_id: Course ID.
+            upload_files: List of file tuples: (filename, file, content_type).
+            title: Title to use for the file or list of files. Note that if
                 not specified, the original file name will be used. Defaults to None.
 
         Returns:
@@ -473,30 +502,30 @@ class API(object):
         """
         url = f"{self.base_url}/courses/{course_id}/images"
         data = dict(title=title)
-        post_files = []
-        for f in upload_files:
-            file_tuple = (f.name, f.read(), f.content_type)
-            post_files.append(("file", file_tuple))  # the field name must be "files"
+        post_files = [
+            ("file", (name, fp, content_type))
+            for (name, fp, content_type) in upload_files
+        ]
         return self._do_request(
             method=POST, url=url, headers=self.headers, data=data, files=post_files
         )
 
     def update_image(
         self,
-        image_id,
-        title=None,
-        description=None,
-        sort_order=None,
-        metadata=None,
+        image_id: int,
+        title: Optional[str] = None,
+        description: Optional[str] = None,
+        sort_order: Optional[int] = None,
+        metadata: Optional[Dict[str, str]] = None,
     ):
         """Update an image in the course library.
 
         Args:
-            image_id (int): Image ID.
-            title (str, optional): Image title. Defaults to None.
-            description (str, optional): Image description. Defaults to None.
-            sort_order (int, optional): Image sort order in the course library. Defaults to None.
-            metadata (dict, optional): Dictionary of key/value pairs. Defaults to None.
+            image_id: Image ID.
+            title: Image title. Defaults to None.
+            description: Image description. Defaults to None.
+            sort_order : Image sort order in the course library. Defaults to None.
+            metadata: Dictionary of key/value pairs. Defaults to None.
 
         Returns:
             Response data.
@@ -512,11 +541,11 @@ class API(object):
             ]
         return self._do_request(method=PUT, url=url, headers=self.headers, json=params)
 
-    def get_image(self, image_id):
+    def get_image(self, image_id: int):
         """Get an image.
 
         Args:
-            image_id (int): Image ID.
+            image_id: Image ID.
 
         Returns:
             Response data.
@@ -527,11 +556,11 @@ class API(object):
         url = f"{self.base_url}/images/{image_id}"
         return self._do_request(method=GET, url=url, headers=self.headers)
 
-    def delete_image(self, image_id):
+    def delete_image(self, image_id: int):
         """Delete an image.
 
         Args:
-            image_id (int): Image ID.
+            image_id: Image ID.
 
         Returns:
             Response data.
