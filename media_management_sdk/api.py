@@ -19,7 +19,7 @@ DEFAULT_TIMEOUT = 30
 
 class API(object):
     """
-    API contains methods for interacting with the REST API.
+    This class includes methods for interacting with REST API endpoints.
     """
 
     def __init__(
@@ -48,19 +48,20 @@ class API(object):
         return headers
 
     def _do_request(self, method: str, url: str, **kwargs) -> Union[List, Dict]:
-        """Performs the HTTP request.
+        """Performs the HTTP request, delegating to the requests library for
+        the actual request itself.
 
-        This method centralizes exception handling and logging and
-        sets some defaults for all requests (e.g. timeout).
+        This method centralizes exception handling and logging as
+        well as defaults for all requests.
 
         Args:
-            method: One of: get, post, put, delete. Defaults to get.
-            url: The endpoint URL. Defaults to "".
+            method: A valid HTTP method (e.g. get, post, put, delete).
+            url: The endpoint URL.
             **kwargs: Arbitrary keyword arguments. These are passed directly
-                to the requests method (e.g. get(), post(), etc).
+                to the underlying request method (e.g. requests.get).
 
         Raises:
-            ValueError: If the method is invalid.
+            ValueError: If the request method is invalid.
             ApiForbiddenError: If HTTP 403 response.
             ApiNotFoundError: If HTTP 404 response.
             ApiHTTPError: If any other 4xx or 5xx response
@@ -77,7 +78,9 @@ class API(object):
 
         kwargs.setdefault("timeout", DEFAULT_TIMEOUT)
 
-        # Log the request, omitting headers which may contain auth credentials
+        # Log the request, omitting a few items such as:
+        # - headers, because they may contain auth credentials
+        # - file objects, because they may contain binary data
         log_kwargs = json.dumps(
             {k: kwargs[k] for k in kwargs if k != "headers" and k != "files"}
         )
@@ -89,7 +92,7 @@ class API(object):
         except requests.exceptions.HTTPError as e:
             logging.exception("HTTP error")
             status_code = e.response.status_code
-            detail = e.response.text
+            detail = e.response.text  ## TODO: this might be json
             if status_code == 400:
                 raise ApiBadRequest(detail)
             if status_code == 403:
@@ -169,11 +172,11 @@ class API(object):
         are commonly used to find a particular course.
 
         Args:
-            title: Course title. Defaults to None.
-            sis_course_id: SIS course ID. Defaults to None.
-            canvas_course_id: Canvas course ID. Defaults to None.
             lti_context_id: LTI context ID. Defaults to None.
             lti_tool_consumer_instance_guid: LTI consumer instance GUID. Defaults to None.
+            canvas_course_id: Canvas course ID. Defaults to None.
+            sis_course_id: SIS course ID. Defaults to None.
+            title: Course title. Defaults to None.
 
         Returns:
             Response data.
@@ -197,7 +200,7 @@ class API(object):
         """Search courses.
 
         Args:
-            text: Search text. Defaults to None.
+            text: Search text.
 
         Returns:
             Response data.
@@ -282,7 +285,7 @@ class API(object):
 
         Args:
             course_id: Course ID.
-            title: Course title. Defaults to None.
+            title: Course title.
             sis_course_id: SIS course ID. Defaults to None.
             canvas_course_id: Canvas course ID. Defaults to None.
             lti_context_id: LTI context ID. Defaults to None.
@@ -554,7 +557,9 @@ class API(object):
             sort_order=sort_order,
         )
         if metadata is not None:
-            params["metadata"] = [{"value": v, "label": k} for (k, v) in metadata.items()]
+            params["metadata"] = [
+                {"value": v, "label": k} for (k, v) in metadata.items()
+            ]
         params = {k: v for k, v in params.items() if v is not None}
         return self._do_request(method=PUT, url=url, headers=self.headers, json=params)
 
