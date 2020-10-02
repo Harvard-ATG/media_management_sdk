@@ -7,7 +7,7 @@ The Image Media Manager SDK provides a python interface to the [Image Media Mana
 Install:
 
 ```
-$ pip install git+https://github.com/Harvard-ATG/media_management_sdk@master#egg=media_management_sdk==0.1.0
+$ pip install git+https://github.com/Harvard-ATG/media_management_sdk.git#egg=media_management_sdk
 ```
 
 Write code:
