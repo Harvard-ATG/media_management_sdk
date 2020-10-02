@@ -4,6 +4,14 @@ The Image Media Manager SDK provides a python interface to the [Image Media Mana
 
 ## Getting Started
 
+Install:
+
+```
+$ pip install git+https://github.com/Harvard-ATG/media_management_sdk@master#egg=media_management_sdk==0.1.0
+```
+
+Write code:
+
 ```python
 from media_management_sdk import Client
 
@@ -13,7 +21,11 @@ client = Client(
     client_secret='your_client_secret',
     base_url='http://localhost:8000/api',
 )
-client.obtain_token(user_id='your_sis_user_id')
+
+# Authenticate with API and obtain a temporary access token
+client.authenticate(user_id='your_sis_user_id')
+
+# Perform API actions
 response = client.api.search_courses('Medieval Media')
 print(response)
 ```
