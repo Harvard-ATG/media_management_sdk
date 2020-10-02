@@ -43,20 +43,36 @@ def test_course_crud():
     api.access_token = auth_result["access_token"]
 
     # create course
-    title = "SDK Test"
+    title = "SDK Course"
+    lti_context_id = generate_ctx_id()
+    lti_tool_consumer_instance_guid = "test.institution.edu"
     course_created = api.create_course(
         title=title,
-        lti_context_id=generate_ctx_id(),
-        lti_tool_consumer_instance_guid="test.institution.edu",
+        lti_context_id=lti_context_id,
+        lti_tool_consumer_instance_guid=lti_tool_consumer_instance_guid,
     )
     assert "id" in course_created
     assert course_created["title"] == title
     course_id = course_created["id"]
 
-    # read course
+    # get course by its primary key
     course_read = api.get_course(course_id)
     assert "id" in course_read
     assert course_read["id"] == course_id
+
+    # find course by context id and instance guid
+    # exact match expected because these two attributes uniquely identify a course
+    courses_found = api.list_courses(
+        lti_context_id=lti_context_id,
+        lti_tool_consumer_instance_guid=lti_tool_consumer_instance_guid
+    )
+    assert len(courses_found) == 1
+    assert courses_found[0]["id"] == course_id
+
+    # search courses by title, which should include the course that was just created
+    courses_search = api.search_courses(text=title)
+    assert len(courses_search) > 0
+    assert course_id in [course["id"] for course in courses_search]
 
     # update course details
     update_params = dict(
@@ -87,7 +103,7 @@ def test_collection_crud():
     api.access_token = auth_result["access_token"]
 
     # create course
-    title = "SDK Test"
+    title = "SDK Course"
     course_created = api.create_course(
         title=title,
         lti_context_id=generate_ctx_id(),
@@ -97,7 +113,7 @@ def test_collection_crud():
 
     # create collection
     collection_params = dict(
-        title="SDK Test",
+        title="SDK Course",
         description="This is a fascinating collection",
     )
     collection_created = api.create_collection(course_id, **collection_params)
@@ -132,7 +148,7 @@ def test_image_crud():
 
     # create course
     course_created = api.create_course(
-        title="SDK Test",
+        title="SDK Course",
         lti_context_id=generate_ctx_id(),
         lti_tool_consumer_instance_guid="test.institution.edu",
     )
@@ -184,7 +200,7 @@ def test_upload_multiple_images_and_add_to_collection():
 
     # create course
     course_created = api.create_course(
-        title="SDK Test",
+        title="SDK Course",
         lti_context_id=generate_ctx_id(),
         lti_tool_consumer_instance_guid="test.institution.edu",
     )
@@ -215,7 +231,7 @@ def test_upload_multiple_images_and_add_to_collection():
 
     # create collection
     collection_created = api.create_collection(
-        course_id, title="SDK Test", description="Just a test"
+        course_id, title="SDK Course", description="Just a test"
     )
     collection_id = collection_created["id"]
 
