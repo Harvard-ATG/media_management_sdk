@@ -1,7 +1,7 @@
 import logging
 import json
 import requests
-from typing import Any, Dict, List, IO, Optional, Tuple, Union
+from typing import Any, Dict, List, IO, Optional, Tuple
 
 from media_management_sdk.exceptions import (
     ApiError,
@@ -47,7 +47,7 @@ class API(object):
             headers["Authorization"] = f"Token {self.access_token}"
         return headers
 
-    def _do_request(self, method: str, url: str, **kwargs) -> Union[List, Dict]:
+    def _do_request(self, method: str, url: str, **kwargs: Any) -> Any:
         """Performs the HTTP request, delegating to the requests library for
         the actual request itself.
 
@@ -123,7 +123,7 @@ class API(object):
         user_id: str,
         course_id: Optional[int] = None,
         course_permission: Optional[str] = None,
-    ):
+    ) -> dict:
         """
         Obtains a temporary access token.
 
@@ -164,7 +164,7 @@ class API(object):
         canvas_course_id: Optional[int] = None,
         sis_course_id: Optional[str] = None,
         title: Optional[str] = None,
-    ):
+    ) -> List[dict]:
         """List courses.
 
         Filter the list of courses by providing a value for one or more of the course attributes.
@@ -196,7 +196,7 @@ class API(object):
             method=GET, url=url, headers=self.headers, params=params
         )
 
-    def search_courses(self, text: str = ""):
+    def search_courses(self, text: str = "") -> List[dict]:
         """Search courses.
 
         Args:
@@ -214,7 +214,7 @@ class API(object):
             method=GET, url=url, headers=self.headers, params=params
         )
 
-    def get_course(self, course_id: int):
+    def get_course(self, course_id: int) -> dict:
         """Get a course.
 
         Args:
@@ -238,7 +238,7 @@ class API(object):
         lti_context_label: Optional[str] = None,
         sis_course_id: Optional[str] = None,
         canvas_course_id: Optional[int] = None,
-    ):
+    ) -> dict:
         """Create a course.
 
         Args:
@@ -280,7 +280,7 @@ class API(object):
         lti_tool_consumer_instance_name: Optional[str] = None,
         lti_context_title: Optional[str] = None,
         lti_context_label: Optional[str] = None,
-    ):
+    ) -> dict:
         """Create a course.
 
         Args:
@@ -314,7 +314,7 @@ class API(object):
         params = {k: v for k, v in params.items() if v is not None}
         return self._do_request(method=PUT, url=url, headers=self.headers, json=params)
 
-    def delete_course(self, course_id: int):
+    def delete_course(self, course_id: int) -> dict:
         """Deletes a course.
 
         Args:
@@ -329,7 +329,7 @@ class API(object):
         url = f"{self.base_url}/courses/{course_id}"
         return self._do_request(method=DELETE, url=url, headers=self.headers)
 
-    def copy_course(self, src_course_id: int, dest_course_id: int):
+    def copy_course(self, src_course_id: int, dest_course_id: int) -> dict:
         """Copy a course and all of its resources.
 
         Note that the destination course must already exist.
@@ -348,7 +348,7 @@ class API(object):
         params = dict(source_id=src_course_id)
         return self._do_request(method=POST, url=url, headers=self.headers, json=params)
 
-    def list_collections(self, course_id: int):
+    def list_collections(self, course_id: int) -> List[dict]:
         """Lists collections in a course.
 
         Args:
@@ -363,7 +363,7 @@ class API(object):
         url = f"{self.base_url}/courses/{course_id}/collections"
         return self._do_request(method=GET, url=url, headers=self.headers)
 
-    def get_collection(self, collection_id: int):
+    def get_collection(self, collection_id: int) -> dict:
         """Get collection details.
 
         Args:
@@ -378,7 +378,7 @@ class API(object):
         url = f"{self.base_url}/collections/{collection_id}"
         return self._do_request(method=GET, url=url, headers=self.headers)
 
-    def get_collection_images(self, collection_id: int):
+    def get_collection_images(self, collection_id: int) -> List[dict]:
         """Get collection images.
 
         Args:
@@ -395,7 +395,7 @@ class API(object):
 
     def create_collection(
         self, course_id: int, title: str, description: Optional[str] = None
-    ):
+    ) -> dict:
         """Create a collection.
 
         Args:
@@ -421,7 +421,7 @@ class API(object):
         description: Optional[str] = None,
         sort_order: Optional[int] = None,
         course_image_ids: Optional[List[int]] = None,
-    ):
+    ) -> dict:
         """Update a collection.
 
         Args:
@@ -450,7 +450,7 @@ class API(object):
         params = {k: v for k, v in params.items() if v is not None}
         return self._do_request(method=PUT, url=url, headers=self.headers, json=params)
 
-    def delete_collection(self, collection_id: int):
+    def delete_collection(self, collection_id: int) -> dict:
         """Deletes a collection.
 
         Args:
@@ -472,7 +472,7 @@ class API(object):
         file_name: str,
         content_type: str,
         title: str,
-    ):
+    ) -> List[dict]:
         """Upload a single image to the course.
 
         Args:
@@ -498,7 +498,7 @@ class API(object):
         course_id: int,
         upload_files: List[Tuple[str, IO, str]],
         title: Optional[str] = None,
-    ):
+    ) -> List[dict]:
         """Upload images to the course.
 
         Args:
@@ -532,7 +532,7 @@ class API(object):
         description: Optional[str] = None,
         sort_order: Optional[int] = None,
         metadata: Optional[Dict[str, str]] = None,
-    ):
+    ) -> dict:
         """Update an image in the course library.
 
         Args:
@@ -563,7 +563,7 @@ class API(object):
         params = {k: v for k, v in params.items() if v is not None}
         return self._do_request(method=PUT, url=url, headers=self.headers, json=params)
 
-    def get_image(self, image_id: int):
+    def get_image(self, image_id: int) -> dict:
         """Get an image.
 
         Args:
@@ -578,7 +578,7 @@ class API(object):
         url = f"{self.base_url}/images/{image_id}"
         return self._do_request(method=GET, url=url, headers=self.headers)
 
-    def delete_image(self, image_id: int):
+    def delete_image(self, image_id: int) -> dict:
         """Delete an image.
 
         Args:

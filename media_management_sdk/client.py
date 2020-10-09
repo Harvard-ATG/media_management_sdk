@@ -25,7 +25,7 @@ class Client(object):
         user_id: str,
         course_id: Optional[int] = None,
         course_permission: Optional[str] = None,
-    ):
+    ) -> None:
         """
         Authenticate with the API by supplying client credentials and obtaining
         a token tied to the user.
@@ -50,7 +50,7 @@ class Client(object):
         lti_context_label: Optional[str] = None,
         sis_course_id: Optional[str] = None,
         canvas_course_id: Optional[int] = None,
-    ):
+    ) -> dict:
         """
         Helper method to find or create a course.
         """

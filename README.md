@@ -63,6 +63,18 @@ $ pytest tests/functional
 
 _Note: In order to run the functional tests, you must first register an _Application_ with the API in order to obtain client credentials, and then configure those details using environment variables as shown above. It's recommended to use a non-production instance._
 
+Run type checks:
+
+```
+$ mypy media_management_sdk --disallow-untyped-calls --disallow-incomplete-defs
+```
+
+Run code formatter:
+
+```
+$ black media_management_sdk 
+```
+
 Generate and preview docs locally:
 
 ```
@@ -71,3 +83,5 @@ $ make html
 $ python3 -mhttp.server --bind 127.0.0.1 8080
 $ open http://127.0.0.1:8080
 ```
+
+
