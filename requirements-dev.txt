@@ -1,0 +1,6 @@
+requests
+black
+pytest
+tox
+sphinx
+mypy
