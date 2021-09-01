@@ -105,70 +105,27 @@ class API(object):
             logger.exception("Request error")
             raise ApiError("Request exception: " + str(e))
 
-        if r.headers.get("content-type", "").startswith("application/json"):
-            try:
-                data = r.json()
-            except requests.exceptions.JSONDecodeError as e:
-                if r.status_code == 204:
-                    data = {}
-                else:
-                    logger.exception("No JSON object could be decoded")
-                    raise ApiError("No JSON object could be decoded")
-        else:
-            data = r.text
+        if r.status_code == 204:
+            return {}
+
+        try:
+            data = r.json()
+        except ValueError as e:
+            error_msg = "No JSON object could be decoded"
+            logger.exception(error_msg)
+            raise ApiError(error_msg)
 
         return data
 
-    def authorize_user(self) -> None:
+    def authorize_user(self) -> str:
         """
-        Authorizes the user based on the data encoded in the json web token.
+        Authorize the user to access a particular course.
 
         Raises:
             ApiError: raised on 4XX or 5XX error response
         """
         url = f"{self.base_url}/auth/authorize-user"
         return self._do_request(method=POST, url=url, headers=self.headers)
-
-    def obtain_token(
-        self,
-        client_id: str,
-        client_secret: str,
-        user_id: str,
-        course_id: Optional[int] = None,
-        course_permission: Optional[str] = None,
-    ) -> dict:
-        """
-        Deprecated: Obtains a temporary access token.
-
-        Args:
-            client_id: Identifies the client application. Obtained from API /admin.
-            client_secret: Identifies the client application. Obtained from API /admin.
-            user_id: The SIS User ID.
-            course_id: The PK of the course object that exists in the API. Used to
-                grant the user access to the course if they didn't create it.
-            course_permission: One of "read" or "write", defaults to "read". Used
-                together with the course_id parameter to grant admin access to the course.
-
-        Returns:
-            dict: Response containing the "access_token" required for making authenticated requests.
-
-        Raises:
-            ValueError: If course_permission is invalid.
-            ApiError: Raised on 4XX or 5XX error response.
-        """
-        valid_permissions = ("read", "write")
-        if course_permission and course_permission not in valid_permissions:
-            raise ValueError(
-                f"Invalid course_permission parameter. Must be one of: {valid_permissions}"
-            )
-
-        url = f"{self.base_url}/auth/obtain-token"
-        params = dict(client_id=client_id, client_secret=client_secret, user_id=user_id)
-        if course_id:
-            params["course_id"] = str(course_id)
-        if course_id and course_permission:
-            params["course_permission"] = course_permission
-        return self._do_request(method=POST, url=url, headers=self.headers, json=params)
 
     def list_courses(
         self,

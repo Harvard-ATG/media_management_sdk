@@ -9,6 +9,7 @@ from media_management_sdk.exceptions import (
     ApiNotFoundError,
     ApiHTTPError,
 )
+from media_management_sdk.jwt import create_jwt
 
 TEST_BASE_URL = "http://localhost:8000/api"
 TEST_HEADERS = {
@@ -75,38 +76,28 @@ def test_do_request_raises_exception_for_status(http_method, status_code, error_
             API()._do_request(method=http_method, url=expected_url)
 
 
-def test_obtain_token_for_user():
-    headers = TEST_HEADERS
-    data = {
+
+def test_authorize_user(courses_fixture):
+    course = courses_fixture[0]
+    token_data = {
         "client_id": TEST_CLIENT_ID,
         "client_secret": TEST_CLIENT_SECRET,
         "user_id": TEST_USER_ID,
+        "course_id": course["id"],
+        "course_permission": "write",
     }
-    expected_token = "b0a4e9e4ae4a4cbcb079eab3637f2b22"
+    access_token = create_jwt(**token_data)
+    headers = dict(**TEST_HEADERS, Authorization=f"Bearer {access_token}")
 
-    api = API(base_url=TEST_BASE_URL)
-    api._do_request = Mock(return_value={"access_token": expected_token})
-    actual_response = api.obtain_token(
-        client_id=TEST_CLIENT_ID, client_secret=TEST_CLIENT_SECRET, user_id=TEST_USER_ID
-    )
+    api = API(base_url=TEST_BASE_URL, access_token=access_token)
+    api._do_request = Mock(return_value={"success": True})
+    actual_response = api.authorize_user()
     api._do_request.assert_called_with(
         method="post",
-        url=f"{TEST_BASE_URL}/auth/obtain-token",
+        url=f"{TEST_BASE_URL}/auth/authorize-user",
         headers=headers,
-        json=data,
     )
-    assert actual_response["access_token"] == expected_token
-
-
-def test_obtain_token_with_invalid_course_permission():
-    api = API(base_url=TEST_BASE_URL)
-    with pytest.raises(ValueError):
-        api.obtain_token(
-            client_id=TEST_CLIENT_ID,
-            client_secret=TEST_CLIENT_SECRET,
-            user_id=TEST_USER_ID,
-            course_permission="invalid",
-        )
+    assert actual_response["success"] is True
 
 
 def test_list_courses_filtered_by_lti_params(courses_fixture):
@@ -134,7 +125,6 @@ def test_list_courses_filtered_by_lti_params(courses_fixture):
 def test_api_implements_required_methods():
     methods = (
         "authorize_user",
-        "obtain_token",
         "list_courses",
         "search_courses",
         "get_course",

@@ -2,7 +2,11 @@ import os
 import os.path
 import uuid
 
+import pytest
+
 from media_management_sdk.api import API
+from media_management_sdk.exceptions import ApiError, ApiNotFoundError
+from media_management_sdk.jwt import create_jwt
 
 TEST_IMAGES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "images")
 
@@ -11,7 +15,7 @@ TEST_CLIENT_SECRET = os.environ.get(
     "MEDIA_MANAGEMENT_API_SECRET", "only_for_test"
 )
 TEST_BASE_URL = os.environ.get(
-    "MEDIA_MANAGEMENT_API_URL", "https://localhost:9000/api"
+    "MEDIA_MANAGEMENT_API_URL", "http://localhost:9000/api"
 )
 TEST_USER_ID = os.environ.get("MEDIA_MANAGEMENT_API_USER_ID", "123456789")
 
@@ -25,25 +29,43 @@ def generate_ctx_id():
     return "test:" + str(uuid.uuid1())
 
 
-def test_obtain_token():
+def test_user_authorization():
     api = API(base_url=TEST_BASE_URL)
-    auth_result = api.obtain_token(**TEST_CREDENTIALS)
-    assert "access_token" in auth_result
-    assert len(auth_result["access_token"]) > 0
-    assert "user_id" in auth_result
-    assert auth_result["user_id"] == TEST_CREDENTIALS["user_id"]
-    assert "expires" in auth_result
+    api.access_token = create_jwt(**TEST_CREDENTIALS)
+
+    # create course (owner is automatically authorized)
+    course_created = api.create_course(
+        title="SDK Test Course",
+        lti_context_id=generate_ctx_id(),
+        lti_tool_consumer_instance_guid="test.institution.edu",
+    )
+    course_response = api.get_course(course_created["id"])
+    course_id = course_response["id"]
+
+    # switch access token to a new user who has not been explicitly authorized
+    api.access_token = create_jwt(
+        client_id=TEST_CLIENT_ID,
+        client_secret=TEST_CLIENT_SECRET,
+        user_id=f"X{TEST_USER_ID}X",
+        course_id=course_id,
+        course_permission="read",
+    )
+
+    # check that the new user does not see the course since they have not been authorized
+    with pytest.raises(ApiNotFoundError):
+        api.get_course(course_id)
+
+    # cleanup
+    api.access_token = create_jwt(**TEST_CREDENTIALS)
+    api.delete_course(course_id)
 
 
 def test_course_crud():
     api = API(base_url=TEST_BASE_URL)
-
-    # obtain token
-    auth_result = api.obtain_token(**TEST_CREDENTIALS)
-    api.access_token = auth_result["access_token"]
+    api.access_token = create_jwt(**TEST_CREDENTIALS)
 
     # create course
-    title = "SDK Course"
+    title = "SDK Test Course"
     lti_context_id = generate_ctx_id()
     lti_tool_consumer_instance_guid = "test.institution.edu"
     course_created = api.create_course(
@@ -99,11 +121,10 @@ def test_course_crud():
 
 def test_collection_crud():
     api = API(base_url=TEST_BASE_URL)
-    auth_result = api.obtain_token(**TEST_CREDENTIALS)
-    api.access_token = auth_result["access_token"]
+    api.access_token = create_jwt(**TEST_CREDENTIALS)
 
     # create course
-    title = "SDK Course"
+    title = "SDK Test Course"
     course_created = api.create_course(
         title=title,
         lti_context_id=generate_ctx_id(),
@@ -113,7 +134,7 @@ def test_collection_crud():
 
     # create collection
     collection_params = dict(
-        title="SDK Course",
+        title="SDK Test Course",
         description="This is a fascinating collection",
     )
     collection_created = api.create_collection(course_id, **collection_params)
@@ -143,12 +164,11 @@ def test_collection_crud():
 
 def test_image_crud():
     api = API(base_url=TEST_BASE_URL)
-    auth_result = api.obtain_token(**TEST_CREDENTIALS)
-    api.access_token = auth_result["access_token"]
+    api.access_token = create_jwt(**TEST_CREDENTIALS)
 
     # create course
     course_created = api.create_course(
-        title="SDK Course",
+        title="SDK Test Course",
         lti_context_id=generate_ctx_id(),
         lti_tool_consumer_instance_guid="test.institution.edu",
     )
@@ -195,12 +215,11 @@ def test_image_crud():
 
 def test_upload_multiple_images_and_add_to_collection():
     api = API(base_url=TEST_BASE_URL)
-    auth_result = api.obtain_token(**TEST_CREDENTIALS)
-    api.access_token = auth_result["access_token"]
+    api.access_token = create_jwt(**TEST_CREDENTIALS)
 
     # create course
     course_created = api.create_course(
-        title="SDK Course",
+        title="SDK Test Course",
         lti_context_id=generate_ctx_id(),
         lti_tool_consumer_instance_guid="test.institution.edu",
     )
@@ -231,7 +250,7 @@ def test_upload_multiple_images_and_add_to_collection():
 
     # create collection
     collection_created = api.create_collection(
-        course_id, title="SDK Course", description="Just a test"
+        course_id, title="SDK Test Course", description="Just a test"
     )
     collection_id = collection_created["id"]
 
