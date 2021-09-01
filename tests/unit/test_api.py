@@ -113,7 +113,7 @@ def test_list_courses_filtered_by_lti_params(courses_fixture):
     course = courses_fixture[0]
 
     access_token = "token123"
-    headers = dict(**TEST_HEADERS, Authorization=f"Token {access_token}")
+    headers = dict(**TEST_HEADERS, Authorization=f"Bearer {access_token}")
     params = dict(
         lti_context_id=course["lti_context_id"],
         lti_tool_consumer_instance_guid=course["lti_tool_consumer_instance_guid"],
@@ -133,6 +133,7 @@ def test_list_courses_filtered_by_lti_params(courses_fixture):
 
 def test_api_implements_required_methods():
     methods = (
+        "authorize_user",
         "obtain_token",
         "list_courses",
         "search_courses",

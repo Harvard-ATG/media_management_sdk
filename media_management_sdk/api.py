@@ -44,7 +44,7 @@ class API(object):
             "Content-Type": "application/json",
         }
         if self.access_token is not None:
-            headers["Authorization"] = f"Token {self.access_token}"
+            headers["Authorization"] = f"Bearer {self.access_token}"
         return headers
 
     def _do_request(self, method: str, url: str, **kwargs: Any) -> Any:
@@ -105,16 +105,29 @@ class API(object):
             logger.exception("Request error")
             raise ApiError("Request exception: " + str(e))
 
-        try:
-            data = r.json()
-        except ValueError as e:
-            if r.status_code == 204:
-                data = {}
-            else:
-                logger.exception("No JSON object could be decoded")
-                raise ApiError("No JSON object could be decoded")
+        if r.headers.get("content-type", "").startswith("application/json"):
+            try:
+                data = r.json()
+            except requests.exceptions.JSONDecodeError as e:
+                if r.status_code == 204:
+                    data = {}
+                else:
+                    logger.exception("No JSON object could be decoded")
+                    raise ApiError("No JSON object could be decoded")
+        else:
+            data = r.text
 
         return data
+
+    def authorize_user(self) -> None:
+        """
+        Authorizes the user based on the data encoded in the json web token.
+
+        Raises:
+            ApiError: raised on 4XX or 5XX error response
+        """
+        url = f"{self.base_url}/auth/authorize-user"
+        return self._do_request(method=POST, url=url, headers=self.headers)
 
     def obtain_token(
         self,
@@ -125,7 +138,7 @@ class API(object):
         course_permission: Optional[str] = None,
     ) -> dict:
         """
-        Obtains a temporary access token.
+        Deprecated: Obtains a temporary access token.
 
         Args:
             client_id: Identifies the client application. Obtained from API /admin.
@@ -519,7 +532,7 @@ class API(object):
             ("file", (name, fp, content_type))
             for (name, fp, content_type) in upload_files
         ]
-        post_headers = {"Authorization": f"Token {self.access_token}"}
+        post_headers = {"Authorization": f"Bearer {self.access_token}"}
         return self._do_request(
             method=POST, url=url, headers=post_headers, data=data, files=post_files
         )

@@ -1,4 +1,7 @@
+import datetime
 from typing import Optional
+
+import jwt
 
 from media_management_sdk.api import API
 from media_management_sdk.exceptions import ApiError
@@ -27,19 +30,17 @@ class Client(object):
         course_permission: Optional[str] = None,
     ) -> None:
         """
-        Authenticate with the API by supplying client credentials and obtaining
-        a token tied to the user.
+        Authenticates with the API and authorizes the user for the course.
         """
         if not user_id:
             raise ValueError("User ID is required to authenticate")
-        response = self.api.obtain_token(
-            client_id=self.client_id,
-            client_secret=self.client_secret,
+
+        self.api.access_token = self._create_jwt(
             user_id=user_id,
             course_id=course_id,
             course_permission=course_permission,
         )
-        self.api.access_token = response["access_token"]
+        self.api.authorize_user()
 
     def find_or_create_course(
         self,
@@ -72,3 +73,21 @@ class Client(object):
             sis_course_id=sis_course_id,
             canvas_course_id=canvas_course_id,
         )
+
+    def _create_jwt(
+        self,
+        user_id: str,
+        course_id: Optional[int] = None,
+        course_permission: Optional[str] = None,
+    ) -> str:
+        issued_at = datetime.datetime.utcnow()
+        expiration = issued_at + datetime.timedelta(hours=24)
+        payload = {
+            "iat": int(issued_at.timestamp()),
+            "exp": int(expiration.timestamp()),
+            "client_id": self.client_id,
+            "user_id": user_id,
+            "course_id": course_id,
+            "course_permission": course_permission,
+        }
+        return jwt.encode(payload, self.client_secret, algorithm="HS256")
