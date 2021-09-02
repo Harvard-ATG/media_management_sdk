@@ -18,10 +18,10 @@ def create_jwt(
         client_id: Publicly identifies the application or consumer (e.g. consumer key).
         client_secret: Private secret used to securely sign the JWT.
         user_id: The SIS ID of the user making the request.
+        expires_in: Number of seconds until the JWT expires. Defaults to 36000 seconds (10 hours).
         course_id: The course ID in the media management API backend (course model PK).
         course_permission: Either "read" or "write". Note that "write" permission is required to create
             collections and upload images.
-        expires_in: Number of seconds until the JWT expires. Defaults to 10 hours.
 
     Returns:
         A string representing the JWT.
