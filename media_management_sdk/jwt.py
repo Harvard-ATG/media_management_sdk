@@ -29,7 +29,7 @@ def create_jwt(
     issued_at = datetime.datetime.utcnow()
     expiration = issued_at + datetime.timedelta(seconds=expires_in)
     payload = {
-        "iat": int(issued_at.timestamp()),   # standard claim
+        "iat": int(issued_at.timestamp()),  # standard claim
         "exp": int(expiration.timestamp()),  # standard claim
         "client_id": client_id,
         "user_id": user_id,
@@ -37,6 +37,8 @@ def create_jwt(
     if course_id is not None:
         payload["course_id"] = course_id
     if course_permission is not None:
-        payload["course_permission"] = course_permission if course_permission in ("read", "write") else "read"
+        payload["course_permission"] = (
+            course_permission if course_permission in ("read", "write") else "read"
+        )
 
     return jwt.encode(payload, client_secret, algorithm="HS256")
