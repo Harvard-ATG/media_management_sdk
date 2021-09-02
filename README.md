@@ -10,7 +10,7 @@ Install:
 $ pip install git+https://github.com/Harvard-ATG/media_management_sdk.git#egg=media_management_sdk
 ```
 
-Write code:
+Quickstart:
 
 ```python
 from media_management_sdk import Client
@@ -22,11 +22,23 @@ client = Client(
     base_url='http://localhost:8000/api',
 )
 
-# Authenticate with API and obtain a temporary access token
+# Authenticate with API 
 client.authenticate(user_id='your_sis_user_id')
 
-# Perform API actions
+# Perform API actions as user
 response = client.api.search_courses('Medieval Media')
+print(response)
+```
+
+To authenticate AND authorize a user for a particular course:
+
+```python
+client.authenticate(
+    user_id='any_sis_user_id', 
+    course_id=101, 
+    course_permission='write', 
+)
+response = client.api.get_course(101)
 print(response)
 ```
 
