@@ -8,9 +8,9 @@ def create_jwt(
     client_id: str,
     client_secret: str,
     user_id: str,
+    expires_in: float = 36000,
     course_id: Optional[int] = None,
     course_permission: Optional[str] = None,
-    expires_in: Optional[int] = 36000,
 ) -> str:
     """Creates a JSON web token used for authenticating a user.
 
