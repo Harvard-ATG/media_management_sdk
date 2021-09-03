@@ -8,7 +8,7 @@ def create_jwt(
     client_id: str,
     client_secret: str,
     user_id: str,
-    expires_in: float = 36000,
+    expires_in: float = 3600,
     course_id: Optional[int] = None,
     course_permission: Optional[str] = None,
 ) -> str:
@@ -18,7 +18,7 @@ def create_jwt(
         client_id: Publicly identifies the application or consumer (e.g. consumer key).
         client_secret: Private secret used to securely sign the JWT.
         user_id: The SIS ID of the user making the request.
-        expires_in: Number of seconds until the JWT expires. Defaults to 36000 seconds (10 hours).
+        expires_in: Number of seconds until the JWT expires. Defaults to 3600 seconds (1 hour).
         course_id: The course ID in the media management API backend (course model PK).
         course_permission: Either "read" or "write". Note that "write" permission is required to create
             collections and upload images.
@@ -41,4 +41,12 @@ def create_jwt(
             course_permission if course_permission in ("read", "write") else "read"
         )
 
-    return jwt.encode(payload, client_secret, algorithm="HS256")
+    token = jwt.encode(payload, client_secret, algorithm="HS256")
+
+    # back-compat: clients using PyJWT <2.0.0 forces bytes, so try to decode as unicode
+    try:
+        token = token.decode() # type: ignore
+    except (UnicodeDecodeError, AttributeError):
+        pass
+
+    return token

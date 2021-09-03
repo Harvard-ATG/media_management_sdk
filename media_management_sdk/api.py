@@ -43,9 +43,13 @@ class API(object):
             "Accept": "application/json",
             "Content-Type": "application/json",
         }
-        if self.access_token is not None:
-            headers["Authorization"] = f"Bearer {self.access_token}"
+        if self.authorization_header:
+            headers["Authorization"] = self.authorization_header
         return headers
+
+    @property
+    def authorization_header(self) -> str:
+        return f"Bearer {self.access_token}" if self.access_token is not None else ""
 
     def _do_request(self, method: str, url: str, **kwargs: Any) -> Any:
         """Performs the HTTP request, delegating to the requests library for
@@ -489,7 +493,7 @@ class API(object):
             ("file", (name, fp, content_type))
             for (name, fp, content_type) in upload_files
         ]
-        post_headers = {"Authorization": f"Bearer {self.access_token}"}
+        post_headers = {"Authorization": self.authorization_header}
         return self._do_request(
             method=POST, url=url, headers=post_headers, data=data, files=post_files
         )

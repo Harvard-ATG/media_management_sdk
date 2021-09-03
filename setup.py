@@ -22,7 +22,7 @@ setup(
     long_description_content_type="text/markdown",
     license="License :: OSI Approved :: BSD License",
     packages=find_packages(),
-    install_requires=['requests', 'PyJWT'],
+    install_requires=['requests', 'PyJWT>=1.7.1'],
     include_package_data=True,
     classifiers=[
         'Environment :: Web Environment',
