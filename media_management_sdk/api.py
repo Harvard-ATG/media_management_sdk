@@ -43,9 +43,13 @@ class API(object):
             "Accept": "application/json",
             "Content-Type": "application/json",
         }
-        if self.access_token is not None:
-            headers["Authorization"] = f"Token {self.access_token}"
+        if self.authorization_header:
+            headers["Authorization"] = self.authorization_header
         return headers
+
+    @property
+    def authorization_header(self) -> str:
+        return f"Bearer {self.access_token}" if self.access_token is not None else ""
 
     def _do_request(self, method: str, url: str, **kwargs: Any) -> Any:
         """Performs the HTTP request, delegating to the requests library for
@@ -105,57 +109,27 @@ class API(object):
             logger.exception("Request error")
             raise ApiError("Request exception: " + str(e))
 
+        if r.status_code == 204:
+            return {}
+
         try:
             data = r.json()
         except ValueError as e:
-            if r.status_code == 204:
-                data = {}
-            else:
-                logger.exception("No JSON object could be decoded")
-                raise ApiError("No JSON object could be decoded")
+            error_msg = "No JSON object could be decoded"
+            logger.exception(error_msg)
+            raise ApiError(error_msg)
 
         return data
 
-    def obtain_token(
-        self,
-        client_id: str,
-        client_secret: str,
-        user_id: str,
-        course_id: Optional[int] = None,
-        course_permission: Optional[str] = None,
-    ) -> dict:
+    def authorize_user(self) -> str:
         """
-        Obtains a temporary access token.
-
-        Args:
-            client_id: Identifies the client application. Obtained from API /admin.
-            client_secret: Identifies the client application. Obtained from API /admin.
-            user_id: The SIS User ID.
-            course_id: The PK of the course object that exists in the API. Used to
-                grant the user access to the course if they didn't create it.
-            course_permission: One of "read" or "write", defaults to "read". Used
-                together with the course_id parameter to grant admin access to the course.
-
-        Returns:
-            dict: Response containing the "access_token" required for making authenticated requests.
+        Authorize the user to access a particular course.
 
         Raises:
-            ValueError: If course_permission is invalid.
-            ApiError: Raised on 4XX or 5XX error response.
+            ApiError: raised on 4XX or 5XX error response
         """
-        valid_permissions = ("read", "write")
-        if course_permission and course_permission not in valid_permissions:
-            raise ValueError(
-                f"Invalid course_permission parameter. Must be one of: {valid_permissions}"
-            )
-
-        url = f"{self.base_url}/auth/obtain-token"
-        params = dict(client_id=client_id, client_secret=client_secret, user_id=user_id)
-        if course_id:
-            params["course_id"] = str(course_id)
-        if course_id and course_permission:
-            params["course_permission"] = course_permission
-        return self._do_request(method=POST, url=url, headers=self.headers, json=params)
+        url = f"{self.base_url}/auth/authorize-user"
+        return self._do_request(method=POST, url=url, headers=self.headers)
 
     def list_courses(
         self,
@@ -519,7 +493,7 @@ class API(object):
             ("file", (name, fp, content_type))
             for (name, fp, content_type) in upload_files
         ]
-        post_headers = {"Authorization": f"Token {self.access_token}"}
+        post_headers = {"Authorization": self.authorization_header}
         return self._do_request(
             method=POST, url=url, headers=post_headers, data=data, files=post_files
         )

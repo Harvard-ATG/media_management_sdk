@@ -2,6 +2,7 @@ from typing import Optional
 
 from media_management_sdk.api import API
 from media_management_sdk.exceptions import ApiError
+from media_management_sdk.jwt import create_jwt
 
 
 class Client(object):
@@ -27,19 +28,21 @@ class Client(object):
         course_permission: Optional[str] = None,
     ) -> None:
         """
-        Authenticate with the API by supplying client credentials and obtaining
-        a token tied to the user.
+        Authenticates with the API and authorizes the user for the course.
         """
         if not user_id:
             raise ValueError("User ID is required to authenticate")
-        response = self.api.obtain_token(
+
+        self.api.access_token = create_jwt(
             client_id=self.client_id,
             client_secret=self.client_secret,
             user_id=user_id,
             course_id=course_id,
             course_permission=course_permission,
         )
-        self.api.access_token = response["access_token"]
+
+        if course_id is not None:
+            self.api.authorize_user()
 
     def find_or_create_course(
         self,
